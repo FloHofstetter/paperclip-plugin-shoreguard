@@ -24,6 +24,7 @@ export const ACTION_KEYS = {
   APPROVE_CHUNK: "approve-chunk",
   REJECT_CHUNK: "reject-chunk",
   TEST_CONNECTION: "test-connection",
+  DELETE_SANDBOX: "delete-sandbox",
 } as const;
 
 export const STATE_KEYS = {

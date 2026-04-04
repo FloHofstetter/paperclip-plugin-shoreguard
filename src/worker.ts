@@ -469,6 +469,14 @@ function registerActionHandlers(ctx: PluginContext): void {
     await sg.rejectChunk(gw, p.sandbox, p.chunkId, p.reason);
     return { rejected: true };
   });
+
+  ctx.actions.register(ACTION_KEYS.DELETE_SANDBOX, async (params) => {
+    const sg = await resolveClient(ctx);
+    const gw = getGateway();
+    const p = params as { name: string };
+    await sg.deleteSandbox(gw, p.name);
+    return { deleted: true };
+  });
 }
 
 // ---------------------------------------------------------------------------
