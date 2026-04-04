@@ -1,0 +1,40 @@
+{
+  "name": "paperclip-plugin-shoreguard",
+  "version": "0.1.0",
+  "description": "Paperclip plugin for managing NVIDIA OpenShell sandboxes via ShoreGuard",
+  "license": "Apache-2.0",
+  "type": "module",
+  "paperclipPlugin": {
+    "manifest": "./dist/manifest.js",
+    "worker": "./dist/worker.js",
+    "ui": "./dist/ui/"
+  },
+  "scripts": {
+    "build": "tsc && node ./scripts/build-ui.mjs",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@paperclipai/plugin-sdk": "file:../paperclip/packages/plugins/sdk",
+    "@paperclipai/shared": "file:../paperclip/packages/shared"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@types/react": "^19.0.8",
+    "esbuild": "^0.27.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}
