@@ -17,8 +17,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "file:../paperclip/packages/plugins/sdk",
-    "@paperclipai/shared": "file:../paperclip/packages/shared"
+    "@paperclipai/plugin-sdk": "^2026.403.0",
+    "@paperclipai/shared": "^2026.403.0"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
