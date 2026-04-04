@@ -7,6 +7,8 @@ export interface ShoreGuardConfig {
   defaultImage: string;
   defaultTemplate: string;
   cleanupOnTerminate: boolean;
+  paperclipBaseUrl: string;
+  webhookSigningSecretRef: string;
 }
 
 /** Gateway as returned by GET /api/gateway/list. */
@@ -83,4 +85,16 @@ export interface SandboxTemplate {
 /** Health check response from GET /healthz or /readyz. */
 export interface HealthResponse {
   status: string;
+}
+
+/** Webhook record from GET/POST /api/webhooks. */
+export interface WebhookRecord {
+  id: number;
+  url: string;
+  secret: string;
+  event_types: string[];
+  is_active: boolean;
+  channel_type: string;
+  created_by: string;
+  created_at: string | null;
 }

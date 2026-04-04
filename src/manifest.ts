@@ -69,6 +69,18 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Delete sandbox when agent terminates",
         default: true,
       },
+      paperclipBaseUrl: {
+        type: "string",
+        title: "Paperclip Base URL",
+        description: "Public URL of this Paperclip instance (for webhook auto-registration)",
+        default: "",
+      },
+      webhookSigningSecretRef: {
+        type: "string",
+        title: "Webhook Signing Secret (secret ref)",
+        description: "Secret ref for the ShoreGuard webhook HMAC signing secret",
+        default: "",
+      },
     },
     required: ["shoreguardUrl", "apiKeyRef"],
   },

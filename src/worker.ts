@@ -11,11 +11,21 @@ import {
   type PluginConfigValidationResult,
 } from "@paperclipai/plugin-sdk";
 import { ShoreGuardClient, ShoreGuardApiError } from "./shoreguard-client.js";
-import { TOOL_NAMES, JOB_KEYS, DATA_KEYS, ACTION_KEYS, STATE_KEYS } from "./constants.js";
+import {
+  PLUGIN_ID,
+  TOOL_NAMES,
+  JOB_KEYS,
+  DATA_KEYS,
+  ACTION_KEYS,
+  STATE_KEYS,
+  WEBHOOK_ENDPOINT_KEY,
+} from "./constants.js";
+import { verifySignature } from "./webhook-verify.js";
 import type { ShoreGuardConfig, Gateway, Sandbox, ApprovalChunk } from "./types.js";
 
 let client: ShoreGuardClient | null = null;
 let config: ShoreGuardConfig | null = null;
+let pluginCtx: PluginContext | null = null;
 
 async function resolveClient(ctx: PluginContext): Promise<ShoreGuardClient> {
   if (client) return client;
@@ -59,6 +69,13 @@ const plugin = definePlugin({
     // -- Event handlers -------------------------------------------------------
 
     registerEventHandlers(ctx);
+
+    // Store ctx for use in onWebhook
+    pluginCtx = ctx;
+
+    // -- Webhook auto-registration --------------------------------------------
+
+    await autoRegisterWebhook(ctx);
 
     ctx.logger.info("ShoreGuard plugin setup complete");
   },
@@ -107,16 +124,43 @@ const plugin = definePlugin({
   },
 
   async onWebhook(input: PluginWebhookInput): Promise<void> {
-    // ShoreGuard sends events with X-Shoreguard-Signature header (HMAC-SHA256).
-    // For now we log and forward; signature verification will be added when
-    // the webhook signing secret is stored in config.
+    const ctx = pluginCtx;
+    if (!ctx) return;
+
+    // Verify HMAC signature if signing secret is configured
+    if (config?.webhookSigningSecretRef) {
+      try {
+        const secret = await ctx.secrets.resolve(config.webhookSigningSecretRef);
+        const sigHeader = Array.isArray(input.headers["x-shoreguard-signature"])
+          ? input.headers["x-shoreguard-signature"][0]
+          : input.headers["x-shoreguard-signature"];
+        if (!sigHeader || !verifySignature(input.rawBody, sigHeader, secret)) {
+          ctx.logger.warn("Webhook signature verification failed");
+          return;
+        }
+      } catch (err) {
+        ctx.logger.warn("Could not verify webhook signature", { error: formatError(err) });
+      }
+    }
+
     const body = input.parsedBody as Record<string, unknown> | undefined;
     if (!body) return;
+
     const eventType = body.event_type as string | undefined;
-    if (eventType) {
-      // Emit as plugin event so other parts of Paperclip can react
-      // ctx is not available here; webhook events are forwarded via state
-      // and picked up by the next polling job run.
+    if (!eventType) return;
+
+    ctx.logger.info("ShoreGuard webhook received", { eventType });
+
+    // Invalidate cached state so UI refreshes
+    const gw = getGateway();
+    if (gw && (eventType.startsWith("sandbox.") || eventType.startsWith("gateway."))) {
+      try {
+        const sg = await resolveClient(ctx);
+        const gateways = await sg.listGateways();
+        await ctx.state.set({ scopeKind: "instance", stateKey: STATE_KEYS.GATEWAYS }, gateways);
+      } catch {
+        // best effort cache refresh
+      }
     }
   },
 
@@ -549,6 +593,61 @@ function registerEventHandlers(ctx: PluginContext): void {
       ctx.logger.warn("Sandbox cleanup failed", { agentId, sandboxName, error: formatError(err) });
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Webhook auto-registration
+// ---------------------------------------------------------------------------
+
+const ALL_SHOREGUARD_EVENTS = [
+  "gateway.registered",
+  "gateway.unregistered",
+  "sandbox.created",
+  "sandbox.deleted",
+  "policy.updated",
+  "approval.approved",
+  "approval.rejected",
+  "inference.updated",
+];
+
+async function autoRegisterWebhook(ctx: PluginContext): Promise<void> {
+  if (!config?.paperclipBaseUrl) {
+    ctx.logger.info("paperclipBaseUrl not set — skipping webhook auto-registration");
+    return;
+  }
+
+  const webhookUrl =
+    `${config.paperclipBaseUrl.replace(/\/+$/, "")}/api/plugins/${PLUGIN_ID}` +
+    `/webhooks/${WEBHOOK_ENDPOINT_KEY}`;
+
+  try {
+    const sg = await resolveClient(ctx);
+    const existing = await sg.listWebhooks();
+    const alreadyRegistered = existing.some((wh) => wh.url === webhookUrl && wh.is_active);
+
+    if (alreadyRegistered) {
+      ctx.logger.info("ShoreGuard webhook already registered", { url: webhookUrl });
+      return;
+    }
+
+    const created = await sg.createWebhook(webhookUrl, ALL_SHOREGUARD_EVENTS);
+    ctx.logger.info("ShoreGuard webhook auto-registered", {
+      webhookId: created.id,
+      url: webhookUrl,
+    });
+
+    // Store the signing secret so the operator can reference it
+    await ctx.state.set(
+      { scopeKind: "instance", stateKey: "webhook-signing-secret" },
+      created.secret,
+    );
+    ctx.logger.info(
+      "Webhook signing secret stored in plugin state (key: webhook-signing-secret). " +
+        "Set webhookSigningSecretRef in config to enable signature verification.",
+    );
+  } catch (err) {
+    ctx.logger.warn("Webhook auto-registration failed", { error: formatError(err) });
+  }
 }
 
 // ---------------------------------------------------------------------------

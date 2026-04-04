@@ -207,6 +207,42 @@ describe("ShoreGuardClient", () => {
     });
   });
 
+  describe("webhooks", () => {
+    it("lists webhooks", async () => {
+      const webhooks = [{ id: 1, url: "https://example.com/hook", is_active: true }];
+      mockFetch.mockResolvedValueOnce(jsonResponse(webhooks));
+      const result = await client.listWebhooks();
+      expect(result).toEqual(webhooks);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8888/api/webhooks",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("creates a webhook", async () => {
+      const created = { id: 2, url: "https://example.com/hook", secret: "abc123" };
+      mockFetch.mockResolvedValueOnce(jsonResponse(created, 201));
+      const result = await client.createWebhook("https://example.com/hook", ["sandbox.created"]);
+      expect(result).toEqual(created);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8888/api/webhooks",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ url: "https://example.com/hook", event_types: ["sandbox.created"] }),
+        }),
+      );
+    });
+
+    it("deletes a webhook", async () => {
+      mockFetch.mockResolvedValueOnce(noContentResponse());
+      await client.deleteWebhook(5);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8888/api/webhooks/5",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+  });
+
   describe("error handling", () => {
     it("throws ShoreGuardApiError on non-ok response", async () => {
       mockFetch.mockResolvedValueOnce(
@@ -236,7 +272,7 @@ describe("ShoreGuardClient", () => {
         json: async () => {
           throw new Error("not json");
         },
-      } as Response);
+      } as unknown as Response);
       await expect(client.healthz()).rejects.toThrow("500");
     });
   });

@@ -3,6 +3,7 @@ import type {
   Sandbox,
   CreateSandboxInput,
   ExecInput,
+  WebhookRecord,
   ExecResult,
   Operation,
   ApprovalChunk,
@@ -178,6 +179,20 @@ export class ShoreGuardClient {
 
   async getTemplate(name: string): Promise<SandboxTemplate> {
     return this.request("GET", `/api/sandbox-templates/${enc(name)}`);
+  }
+
+  // -- Webhooks ---------------------------------------------------------------
+
+  async listWebhooks(): Promise<WebhookRecord[]> {
+    return this.request("GET", "/api/webhooks");
+  }
+
+  async createWebhook(url: string, eventTypes: string[]): Promise<WebhookRecord> {
+    return this.request("POST", "/api/webhooks", { url, event_types: eventTypes });
+  }
+
+  async deleteWebhook(webhookId: number): Promise<void> {
+    await this.request("DELETE", `/api/webhooks/${webhookId}`);
   }
 }
 
