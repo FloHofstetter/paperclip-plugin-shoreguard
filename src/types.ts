@@ -38,6 +38,8 @@ export interface Sandbox {
   namespace?: string;
   created_at_ms?: number;
   current_policy_version?: number;
+  labels?: Record<string, string>;
+  description?: string;
 }
 
 /** Request body for POST /api/gateways/{gw}/sandboxes. */
@@ -49,6 +51,8 @@ export interface CreateSandboxInput {
   environment?: Record<string, string>;
   policy?: Record<string, unknown>;
   presets?: string[];
+  labels?: Record<string, string>;
+  description?: string;
 }
 
 /** Request body for POST /api/gateways/{gw}/sandboxes/{name}/exec. */

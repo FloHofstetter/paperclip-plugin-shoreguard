@@ -19,6 +19,8 @@ export interface CreateSandboxInput {
   providers?: string[];
   gpu?: boolean;
   environment?: Record<string, string>;
+  labels?: Record<string, string>;
+  description?: string;
 }
 
 export interface ExecInput {

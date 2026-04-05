@@ -17,11 +17,14 @@ function obj(v: unknown): Record<string, unknown> { return typeof v === "object"
 
 // Sandbox naming convention — canonical source: src/naming.ts in the plugin package
 const SANDBOX_PREFIX = "pc-";
-function agentSandboxName(agentId: string, strategy: string, runId?: string): string {
-  const slug = agentId.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 40);
-  if (strategy === "per-agent") return `${SANDBOX_PREFIX}${slug}`;
+function slugify(s: string): string { return s.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase(); }
+function agentSandboxName(companyName: string, agentName: string, strategy: string, runId?: string): string {
+  const coSlug = slugify(companyName).slice(0, 20);
+  const agSlug = slugify(agentName).slice(0, 20);
+  const base = `${SANDBOX_PREFIX}${coSlug}-${agSlug}`;
+  if (strategy === "per-agent") return base;
   const rslug = (runId ?? "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
-  return `${SANDBOX_PREFIX}${slug}-${rslug}`;
+  return `${base}-${rslug}`;
 }
 
 async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
@@ -52,7 +55,9 @@ async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionRe
   const tid = str(context.taskId) || str(context.issueId);
   if (tid) sandboxEnv.PAPERCLIP_TASK_ID = tid;
 
-  const sbName = agentSandboxName(agent.id, strategy, runId);
+  // Use agent.name for human-readable sandbox names, companyId as fallback for company
+  const companyLabel = str(config.companyName) || agent.companyId.slice(0, 8);
+  const sbName = agentSandboxName(companyLabel, agent.name ?? agent.id, strategy, runId);
 
   // Track whether we created a sandbox on the remote (for cleanup in finally)
   let sandboxCreatedOnRemote = false;
@@ -67,7 +72,21 @@ async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionRe
         await onLog("stdout", `[openshell] Reusing sandbox.\n`);
       } else {
         if (ex) await client.deleteSandbox(gw, sbName).catch(() => {});
-        const op = await client.createSandbox(gw, { name: sbName, image: image || undefined, providers: providers.length ? providers : undefined, gpu: gpu || undefined, environment: sandboxEnv });
+        const op = await client.createSandbox(gw, {
+          name: sbName,
+          image: image || undefined,
+          providers: providers.length ? providers : undefined,
+          gpu: gpu || undefined,
+          environment: sandboxEnv,
+          labels: {
+            source: "paperclip",
+            "paperclip.company": companyLabel,
+            "paperclip.agent": agent.name ?? agent.id,
+            "paperclip.agent-id": agent.id,
+            ...(strategy === "per-run" ? { "paperclip.run-id": runId } : {}),
+          },
+          description: `Paperclip agent "${agent.name ?? agent.id}" (${strategy})`,
+        });
         sandboxCreatedOnRemote = true;
         const r = await client.pollOperation(op.operation_id);
         if (r.status === "failed") {

@@ -627,7 +627,9 @@ function registerEventHandlers(ctx: PluginContext): void {
 
     const agentId = event.entityId ?? "unknown";
     const { agentSandboxName } = await import("./naming.js");
-    const sandboxName = agentSandboxName(agentId, "per-run", event.eventId ?? String(Date.now()));
+    // Use companyId as fallback since we don't have the company name in the event
+    const companySlug = event.companyId?.slice(0, 8) ?? "unknown";
+    const sandboxName = agentSandboxName(companySlug, agentId.slice(0, 8), "per-run", event.eventId ?? String(Date.now()));
 
     ctx.logger.info("Auto-provisioning sandbox for agent run", { agentId, sandboxName });
 
@@ -676,7 +678,7 @@ function registerEventHandlers(ctx: PluginContext): void {
     try {
       const sg = await resolveClient(ctx);
       const { isAdapterSandbox, extractAgentSlug } = await import("./naming.js");
-      const agentSlug = agentId.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 40);
+      const agentSlug = agentId.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase().slice(0, 20);
 
       // Delete plugin-tracked sandbox
       if (storedName) {
