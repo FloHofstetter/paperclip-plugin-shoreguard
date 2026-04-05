@@ -213,6 +213,13 @@ const manifest: PaperclipPluginManifestV1 = {
         exportName: "ProjectSandboxesTab",
         entityTypes: ["project"],
       },
+      {
+        type: "detailTab",
+        id: "sg-agent-sandboxes",
+        displayName: "Sandboxes",
+        exportName: "AgentSandboxesTab",
+        entityTypes: ["agent"],
+      },
     ],
   },
 };

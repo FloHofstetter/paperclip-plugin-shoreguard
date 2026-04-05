@@ -488,6 +488,48 @@ function registerDataHandlers(ctx: PluginContext): void {
       return [];
     }
   });
+
+  ctx.data.register(DATA_KEYS.AGENT_SANDBOXES, async (params) => {
+    const gw = getGateway();
+    if (!gw) return { sandboxes: [], config: null };
+
+    const p = params as { agentId?: string } | undefined;
+    const agentId = p?.agentId;
+    if (!agentId) return { sandboxes: [], config: null };
+
+    const { isAdapterSandbox, extractAgentSlug } = await import("./naming.js");
+    const agentSlug = agentId.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 40);
+
+    // Get all sandboxes and filter by agent slug
+    const allSandboxes =
+      ((await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: `${STATE_KEYS.SANDBOX_PREFIX}${gw}`,
+      })) as Sandbox[] | null) ?? [];
+
+    const agentSandboxes = allSandboxes.filter((sb) => {
+      if (!isAdapterSandbox(sb.name)) return false;
+      return extractAgentSlug(sb.name) === agentSlug;
+    });
+
+    // Read agent config for display (need companyId from event context)
+    let adapterConfig: Record<string, unknown> | null = null;
+    try {
+      // Try to find the agent across companies the plugin can see
+      const companies = await ctx.companies.list();
+      for (const co of companies) {
+        const agent = await ctx.agents.get(agentId, co.id);
+        if (agent) {
+          adapterConfig = agent.adapterConfig;
+          break;
+        }
+      }
+    } catch {
+      // Agent read may fail
+    }
+
+    return { sandboxes: agentSandboxes, adapterConfig };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +564,48 @@ function registerActionHandlers(ctx: PluginContext): void {
     return { rejected: true };
   });
 
+  ctx.actions.register(ACTION_KEYS.GENERATE_ADAPTER_CONFIG, async () => {
+    if (!config) return { error: "Plugin not configured" };
+    const template: Record<string, unknown> = {
+      shoreguardUrl: config.shoreguardUrl,
+      shoreguardApiKey: "<your-service-principal-key>",
+      gateway: config.defaultGateway || "dev",
+      dangerouslySkipPermissions: true,
+      model: "claude-sonnet-4-6",
+      reuseStrategy: "per-agent",
+    };
+    if (config.defaultImage) template.sandboxImage = config.defaultImage;
+    return { config: JSON.stringify(template, null, 2) };
+  });
+
+  ctx.actions.register(ACTION_KEYS.VALIDATE_AGENT_CONFIG, async (params) => {
+    const p = params as { agentId?: string };
+    if (!p.agentId) return { success: false, error: "No agentId provided" };
+
+    try {
+      // Find agent across companies
+      const companies = await ctx.companies.list();
+      let adapterConfig: Record<string, unknown> | null = null;
+      for (const co of companies) {
+        const agent = await ctx.agents.get(p.agentId, co.id);
+        if (agent) { adapterConfig = agent.adapterConfig; break; }
+      }
+      if (!adapterConfig) return { success: false, error: "Agent not found" };
+
+      const url = adapterConfig.shoreguardUrl as string;
+      const key = adapterConfig.shoreguardApiKey as string;
+      const gw = adapterConfig.gateway as string;
+      if (!url || !key || !gw) return { success: false, error: "Missing shoreguardUrl, shoreguardApiKey, or gateway" };
+
+      const { ShoreGuardClient } = await import("./shoreguard-client.js");
+      const client = new ShoreGuardClient({ baseUrl: url, apiKey: key });
+      await client.listSandboxes(gw, { limit: 1 });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: formatError(err) };
+    }
+  });
+
   ctx.actions.register(ACTION_KEYS.DELETE_SANDBOX, async (params) => {
     const sg = await resolveClient(ctx);
     const gw = getGateway();
@@ -542,7 +626,8 @@ function registerEventHandlers(ctx: PluginContext): void {
     if (!gw) return;
 
     const agentId = event.entityId ?? "unknown";
-    const sandboxName = `agent-${agentId.slice(0, 8)}-${Date.now()}`;
+    const { agentSandboxName } = await import("./naming.js");
+    const sandboxName = agentSandboxName(agentId, "per-run", event.eventId ?? String(Date.now()));
 
     ctx.logger.info("Auto-provisioning sandbox for agent run", { agentId, sandboxName });
 
@@ -580,25 +665,41 @@ function registerEventHandlers(ctx: PluginContext): void {
     const gw = getGateway();
     if (!gw) return;
 
-    const sandboxName = (await ctx.state.get({
+    const storedName = (await ctx.state.get({
       scopeKind: "agent",
       scopeId: agentId,
       stateKey: STATE_KEYS.AGENT_SANDBOX,
     })) as string | null;
 
-    if (!sandboxName) return;
-
-    ctx.logger.info("Cleaning up sandbox for terminated agent", { agentId, sandboxName });
+    ctx.logger.info("Cleaning up sandboxes for terminated agent", { agentId, storedName });
 
     try {
       const sg = await resolveClient(ctx);
-      await sg.deleteSandbox(gw, sandboxName);
+      const { isAdapterSandbox, extractAgentSlug } = await import("./naming.js");
+      const agentSlug = agentId.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 40);
+
+      // Delete plugin-tracked sandbox
+      if (storedName) {
+        await sg.deleteSandbox(gw, storedName).catch(() => {});
+      }
+
+      // Also find and delete adapter-created sandboxes matching this agent
+      const allSandboxes = await sg.listSandboxes(gw).catch(() => []);
+      for (const sb of allSandboxes) {
+        if (!isAdapterSandbox(sb.name)) continue;
+        const slug = extractAgentSlug(sb.name);
+        if (slug === agentSlug) {
+          ctx.logger.info("Deleting adapter sandbox", { sandboxName: sb.name });
+          await sg.deleteSandbox(gw, sb.name).catch(() => {});
+        }
+      }
+
       await ctx.activity.log({
         companyId: event.companyId,
-        message: `Sandbox "${sandboxName}" cleaned up after agent ${agentId} terminated`,
+        message: `Sandboxes cleaned up after agent ${agentId} terminated`,
       });
     } catch (err) {
-      ctx.logger.warn("Sandbox cleanup failed", { agentId, sandboxName, error: formatError(err) });
+      ctx.logger.warn("Sandbox cleanup failed", { agentId, error: formatError(err) });
     }
   });
 }

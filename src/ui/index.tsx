@@ -3,3 +3,4 @@ export { ShoreGuardSidebarLink } from "./SidebarLink.js";
 export { ShoreGuardPage } from "./ShoreGuardPage.js";
 export { ShoreGuardSettingsPage } from "./SettingsPage.js";
 export { ProjectSandboxesTab } from "./ProjectSandboxesTab.js";
+export { AgentSandboxesTab } from "./AgentSandboxesTab.js";

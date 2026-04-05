@@ -19,6 +19,8 @@ export const DATA_KEYS = {
   PENDING_APPROVALS: "pending-approvals",
   TEMPLATES: "templates",
   UI_CONFIG: "ui-config",
+  AGENT_SANDBOXES: "agent-sandboxes",
+  AGENT_ADAPTER_CONFIG: "agent-adapter-config",
 } as const;
 
 export const ACTION_KEYS = {
@@ -26,6 +28,8 @@ export const ACTION_KEYS = {
   REJECT_CHUNK: "reject-chunk",
   TEST_CONNECTION: "test-connection",
   DELETE_SANDBOX: "delete-sandbox",
+  GENERATE_ADAPTER_CONFIG: "generate-adapter-config",
+  VALIDATE_AGENT_CONFIG: "validate-agent-config",
 } as const;
 
 export const STATE_KEYS = {
