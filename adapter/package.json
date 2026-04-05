@@ -1,0 +1,24 @@
+{
+  "name": "paperclip-adapter-openshell-shoreguard",
+  "version": "0.1.0",
+  "description": "Paperclip external adapter for running agents in OpenShell sandboxes via ShoreGuard",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@paperclipai/adapter-utils": "^2026.403.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.7.3"
+  }
+}
