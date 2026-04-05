@@ -4,8 +4,13 @@ import type { Sandbox } from "../types.js";
 import { DATA_KEYS } from "../constants.js";
 import { layoutStack, rowStyle, mutedText, statusBadge } from "./styles.js";
 
+interface UiConfig { showProjectTab?: boolean }
+
 export function ProjectSandboxesTab(_props: PluginDetailTabProps) {
+  const { data: uiCfg } = usePluginData<UiConfig>(DATA_KEYS.UI_CONFIG);
   const { data: sandboxes, loading, error } = usePluginData<Sandbox[]>(DATA_KEYS.SANDBOX_LIST);
+
+  if (uiCfg && uiCfg.showProjectTab === false) return null;
 
   if (loading) return <div style={mutedText}>Loading sandboxes...</div>;
   if (error) return <div style={mutedText}>Error: {error.message}</div>;
@@ -18,7 +23,7 @@ export function ProjectSandboxesTab(_props: PluginDetailTabProps) {
       {list.map((sb) => (
         <div key={sb.name} style={rowStyle}>
           <span style={{ fontWeight: 500, fontSize: "13px" }}>{sb.name}</span>
-          <span style={statusBadge(sb.status)}>{sb.status}</span>
+          <span style={statusBadge(sb.phase)}>{sb.phase}</span>
           <span style={mutedText}>{sb.image}</span>
           {sb.gpu && <span style={mutedText}>GPU</span>}
         </div>

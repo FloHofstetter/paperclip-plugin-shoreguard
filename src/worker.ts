@@ -325,7 +325,7 @@ function registerTools(ctx: PluginContext): void {
       const p = params as { name: string };
       try {
         const sandbox = await sg.getSandbox(gw, p.name);
-        return { content: `Sandbox "${p.name}" status: ${sandbox.status}`, data: sandbox };
+        return { content: `Sandbox "${p.name}" phase: ${sandbox.phase}`, data: sandbox };
       } catch (err) {
         return { error: formatError(err) };
       }
@@ -470,6 +470,14 @@ function registerDataHandlers(ctx: PluginContext): void {
         stateKey: STATE_KEYS.PENDING_APPROVALS,
       })) as unknown) ?? []
     );
+  });
+
+  ctx.data.register(DATA_KEYS.UI_CONFIG, async () => {
+    return {
+      showSidebarLink: config?.showSidebarLink ?? true,
+      showDashboardWidget: config?.showDashboardWidget ?? true,
+      showProjectTab: config?.showProjectTab ?? true,
+    };
   });
 
   ctx.data.register(DATA_KEYS.TEMPLATES, async () => {

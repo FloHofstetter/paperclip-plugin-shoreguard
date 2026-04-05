@@ -12,7 +12,6 @@ import {
   tdStyle,
   tabBarStyle,
   tabStyle,
-  buttonStyle,
   dangerButtonStyle,
   successButtonStyle,
   mutedText,
@@ -126,7 +125,7 @@ function SandboxesTab() {
             <tr key={sb.name}>
               <td style={{ ...tdStyle, fontWeight: 500 }}>{sb.name}</td>
               <td style={tdStyle}>
-                <span style={statusBadge(sb.status)}>{sb.status}</span>
+                <span style={statusBadge(sb.phase)}>{sb.phase}</span>
               </td>
               <td style={tdStyle}>{sb.image}</td>
               <td style={tdStyle}>{sb.gpu ? "Yes" : "No"}</td>

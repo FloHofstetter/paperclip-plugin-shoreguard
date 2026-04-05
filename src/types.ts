@@ -9,6 +9,9 @@ export interface ShoreGuardConfig {
   cleanupOnTerminate: boolean;
   paperclipBaseUrl: string;
   webhookSigningSecretRef: string;
+  showSidebarLink: boolean;
+  showDashboardWidget: boolean;
+  showProjectTab: boolean;
 }
 
 /** Gateway as returned by GET /api/gateway/list. */
@@ -17,17 +20,24 @@ export interface Gateway {
   endpoint: string;
   scheme: string;
   status: string;
+  connected: boolean;
+  last_status?: string;
   description?: string;
   labels?: Record<string, string>;
 }
 
 /** Sandbox record from GET /api/gateways/{gw}/sandboxes. */
 export interface Sandbox {
+  id: string;
   name: string;
-  status: string;
+  /** Phase from OpenShell: provisioning, ready, failed, etc. */
+  phase: string;
+  phase_code: number;
   image: string;
   gpu: boolean;
-  created_at?: string;
+  namespace?: string;
+  created_at_ms?: number;
+  current_policy_version?: number;
 }
 
 /** Request body for POST /api/gateways/{gw}/sandboxes. */

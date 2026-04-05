@@ -92,7 +92,7 @@ export function tabStyle(active: boolean): CSSProperties {
 }
 
 export function statusBadge(status: string): CSSProperties {
-  const isOk = ["ok", "running", "connected", "healthy"].includes(status.toLowerCase());
+  const isOk = ["ok", "running", "connected", "healthy", "ready"].includes(status.toLowerCase());
   const color = isOk ? "#16a34a" : "var(--destructive, #dc2626)";
   return {
     display: "inline-block",

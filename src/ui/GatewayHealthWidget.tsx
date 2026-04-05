@@ -4,8 +4,13 @@ import type { Gateway } from "../types.js";
 import { DATA_KEYS } from "../constants.js";
 import { layoutStack, rowStyle, mutedText, statusBadge } from "./styles.js";
 
+interface UiConfig { showDashboardWidget?: boolean }
+
 export function GatewayHealthWidget(_props: PluginWidgetProps) {
+  const { data: uiCfg } = usePluginData<UiConfig>(DATA_KEYS.UI_CONFIG);
   const { data: gateways, loading, error } = usePluginData<Gateway[]>(DATA_KEYS.GATEWAY_HEALTH);
+
+  if (uiCfg && uiCfg.showDashboardWidget === false) return null;
 
   if (loading) return <div style={mutedText}>Loading gateways...</div>;
   if (error) return <div style={mutedText}>Error: {error.message}</div>;

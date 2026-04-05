@@ -18,6 +18,7 @@ export const DATA_KEYS = {
   SANDBOX_LIST: "sandbox-list",
   PENDING_APPROVALS: "pending-approvals",
   TEMPLATES: "templates",
+  UI_CONFIG: "ui-config",
 } as const;
 
 export const ACTION_KEYS = {

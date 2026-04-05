@@ -27,6 +27,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "ui.dashboardWidget.register",
     "ui.detailTab.register",
     "ui.page.register",
+    "ui.sidebar.register",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -80,6 +81,21 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Webhook Signing Secret (secret ref)",
         description: "Secret ref for the ShoreGuard webhook HMAC signing secret",
         default: "",
+      },
+      showSidebarLink: {
+        type: "boolean",
+        title: "Show ShoreGuard in sidebar",
+        default: true,
+      },
+      showDashboardWidget: {
+        type: "boolean",
+        title: "Show gateway health widget on dashboard",
+        default: true,
+      },
+      showProjectTab: {
+        type: "boolean",
+        title: "Show Sandboxes tab on project detail pages",
+        default: true,
       },
     },
     required: ["shoreguardUrl", "apiKeyRef"],
@@ -165,6 +181,12 @@ const manifest: PaperclipPluginManifestV1 = {
   ],
   ui: {
     slots: [
+      {
+        type: "sidebar",
+        id: "sg-sidebar",
+        displayName: "ShoreGuard",
+        exportName: "ShoreGuardSidebarLink",
+      },
       {
         type: "dashboardWidget",
         id: "sg-gateway-health",
