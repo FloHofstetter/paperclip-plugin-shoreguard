@@ -31,7 +31,8 @@ export interface ExecInput {
 
 export interface Operation {
   operation_id: string;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "succeeded" | "failed";
+  result?: Record<string, unknown>;
   error?: string;
 }
 
@@ -117,9 +118,15 @@ export class ShoreGuardClient {
   }
 
   async execInSandbox(gw: string, name: string, body: ExecInput): Promise<ExecResult> {
-    // Exec timeout = command timeout + 30s buffer for gRPC overhead
-    const requestTimeout = ((body.timeout_seconds ?? 600) + 30) * 1000;
-    return this.request("POST", `/api/gateways/${enc(gw)}/sandboxes/${enc(name)}/exec`, body, requestTimeout);
+    const pollTimeout = ((body.timeout_seconds ?? 600) + 30) * 1000;
+    const op = await this.request<Operation>("POST", `/api/gateways/${enc(gw)}/sandboxes/${enc(name)}/exec`, body);
+    if (op.operation_id) {
+      const result = await this.pollOperation(op.operation_id, pollTimeout);
+      if (result.status === "failed") throw new Error(result.error ?? "Exec operation failed");
+      return result.result as unknown as ExecResult;
+    }
+    // Fallback for older ShoreGuard versions that return result directly
+    return op as unknown as ExecResult;
   }
 
   async pollOperation(operationId: string, timeoutMs = 300_000): Promise<Operation> {
@@ -127,7 +134,7 @@ export class ShoreGuardClient {
     let delay = 500;
     while (Date.now() - start < timeoutMs) {
       const op = await this.request<Operation>("GET", `/api/operations/${enc(operationId)}`);
-      if (op.status === "completed" || op.status === "failed") return op;
+      if (op.status === "succeeded" || op.status === "completed" || op.status === "failed") return op;
       await new Promise((r) => setTimeout(r, delay));
       delay = Math.min(delay * 1.5, 5_000);
     }
