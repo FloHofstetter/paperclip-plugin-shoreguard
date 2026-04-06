@@ -1,0 +1,42 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      # --- Plugin ---
+      - name: Install plugin dependencies
+        run: npm install
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Publish plugin
+        run: npm publish --access public --provenance
+
+      # --- Adapter ---
+      - name: Install adapter dependencies
+        run: cd adapter && npm install
+
+      - name: Build adapter
+        run: cd adapter && npx tsc
+
+      - name: Publish adapter
+        run: cd adapter && npm publish --access public --provenance

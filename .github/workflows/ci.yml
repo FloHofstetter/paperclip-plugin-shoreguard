@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install plugin dependencies
+        run: npm install
+
+      - name: Typecheck plugin
+        run: npx tsc --noEmit
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Install adapter dependencies
+        run: cd adapter && npm install
+
+      - name: Typecheck adapter
+        run: cd adapter && npx tsc --noEmit
+
+      - name: Build adapter
+        run: cd adapter && npx tsc

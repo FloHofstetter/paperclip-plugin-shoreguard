@@ -1,9 +1,10 @@
 {
-  "name": "paperclip-plugin-shoreguard",
+  "name": "@shoreguard/paperclip-plugin",
   "version": "0.1.0",
   "description": "Paperclip plugin for managing NVIDIA OpenShell sandboxes via ShoreGuard",
   "license": "Apache-2.0",
   "type": "module",
+  "files": ["dist", "package.json"],
   "paperclipPlugin": {
     "manifest": "./dist/manifest.js",
     "worker": "./dist/worker.js",
@@ -11,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc && node ./scripts/build-ui.mjs",
+    "prepublishOnly": "npm run build",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
