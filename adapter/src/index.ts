@@ -124,7 +124,7 @@ async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionRe
     let stdout = "", stderr = "", exitCode = -1, timedOut = false;
 
     try {
-      const r = await client.execInSandbox(gw, sbName, { command: ["sh", "-c", cmd], timeout_seconds: timeout > 0 ? timeout : undefined, env: execEnv });
+      const r = await client.execInSandbox(gw, sbName, { command: ["sh", "-c", cmd], timeout_seconds: timeout, env: execEnv });
       stdout = r.stdout; stderr = r.stderr; exitCode = r.exit_code;
     } catch (err) {
       timedOut = err instanceof ShoreGuardTimeoutError;

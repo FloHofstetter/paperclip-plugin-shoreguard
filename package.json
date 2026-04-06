@@ -1,6 +1,6 @@
 {
   "name": "@shoreguard/paperclip-plugin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Paperclip plugin for managing NVIDIA OpenShell sandboxes via ShoreGuard",
   "license": "Apache-2.0",
   "repository": {
