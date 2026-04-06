@@ -627,9 +627,24 @@ function registerEventHandlers(ctx: PluginContext): void {
 
     const agentId = event.entityId ?? "unknown";
     const { agentSandboxName } = await import("./naming.js");
-    // Use companyId as fallback since we don't have the company name in the event
-    const companySlug = event.companyId?.slice(0, 8) ?? "unknown";
-    const sandboxName = agentSandboxName(companySlug, agentId.slice(0, 8), "per-run", event.eventId ?? String(Date.now()));
+
+    // Resolve human-readable names for the sandbox
+    let companyName = "unknown";
+    let agentName = agentId.slice(0, 12);
+    try {
+      if (event.companyId) {
+        const companies = await ctx.companies.list();
+        const co = companies.find((c) => c.id === event.companyId);
+        if (co) companyName = co.name;
+      }
+      if (event.companyId) {
+        const agent = await ctx.agents.get(agentId, event.companyId);
+        if (agent) agentName = agent.name;
+      }
+    } catch {
+      // Fallback to IDs if lookup fails
+    }
+    const sandboxName = agentSandboxName(companyName, agentName, "per-run", event.eventId ?? String(Date.now()));
 
     ctx.logger.info("Auto-provisioning sandbox for agent run", { agentId, sandboxName });
 
@@ -639,6 +654,13 @@ function registerEventHandlers(ctx: PluginContext): void {
         name: sandboxName,
         image: config.defaultImage || undefined,
         gpu: false,
+        labels: {
+          source: "paperclip-plugin",
+          "paperclip.company": companyName,
+          "paperclip.agent": agentName,
+          "paperclip.agent-id": agentId,
+        },
+        description: `Auto-provisioned for agent "${agentName}"`,
       });
 
       const op = await sg.pollOperation(operation_id, 60_000);
